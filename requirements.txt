@@ -1,0 +1,5 @@
+PyQt6>=6.6.0
+opencv-python-headless>=4.9.0.80
+numpy>=1.26.0
+mss>=9.0.1
+pynput>=1.7.6
