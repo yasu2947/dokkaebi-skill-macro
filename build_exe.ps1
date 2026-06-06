@@ -76,11 +76,12 @@ $cleanArgs = @()  # --clean 제거 (위에서 수동 삭제)
   --hidden-import "PyQt6.QtCore" `
   --hidden-import "PyQt6.QtGui" `
   --hidden-import "PyQt6.QtWidgets" `
-  --hidden-import "PyQt6.QtMultimedia" `
-  --hidden-import "PyQt6.QtMultimediaWidgets" `
   --hidden-import "cv2" `
   --hidden-import "numpy" `
   --hidden-import "mss" `
+  --hidden-import "pynput" `
+  --hidden-import "pynput.keyboard._win32" `
+  --hidden-import "pynput.mouse._win32" `
   --add-data "$(Join-Path $contentsDir 'font');contents/font" `
   --add-data "$(Join-Path $contentsDir 'images');contents/images" `
   (Join-Path $root "exe_entry.py")

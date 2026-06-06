@@ -25,6 +25,7 @@ from PyQt6.QtWidgets import (
     QApplication,
     QCheckBox,
     QComboBox,
+    QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
     QFrame,
@@ -40,6 +41,7 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSizePolicy,
+    QSpinBox,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
@@ -76,7 +78,6 @@ from src.ui.key_capture_edit import KeyCaptureEdit
 from src.ui.macro_scroll import MacroScrollArea
 from src.ui.nav_ripple_button import NavRippleButton
 from src.ui.roi_picker import pick_roi_fullscreen
-from src.ui.slot_priority_menu import SlotPriorityMenuButton
 from src.ui.welcome_page import WelcomePage
 from src.ui.widgets_no_wheel import NoWheelDoubleSpinBox, NoWheelSpinBox
 
@@ -353,6 +354,17 @@ QWidget#slotRowWrap:hover {{
   background: transparent;
 }}
 
+/* 스킬 라이브러리 헤더 */
+QWidget#skillLibHeader {{
+  background: #21262d;
+  border-radius: {_R};
+}}
+QLabel#skillLibHeaderLabel {{
+  color: #c9d1d9;
+  font-size: 11px;
+  font-weight: bold;
+}}
+
 QSpinBox, QLineEdit, QDoubleSpinBox {{
   background: #161b22;
   border: none;
@@ -464,6 +476,19 @@ QWidget#skillSlotsPage QPushButton#slotSwapPriCombo:hover {{
 QWidget#skillSlotsPage QPushButton#slotSwapPriCombo:pressed {{
   background: rgba(255,255,255,0.14);
 }}
+QPushButton#skillInfoPriBtn {{
+  background: rgba(255,255,255,0.07);
+  border: none;
+  border-radius: {_R};
+  padding: 2px 4px;
+  min-height: 28px;
+  max-height: 32px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #d1d5db;
+}}
+QPushButton#skillInfoPriBtn:hover {{ background: rgba(255,255,255,0.10); }}
+QPushButton#skillInfoPriBtn:pressed {{ background: rgba(255,255,255,0.14); }}
 QWidget#skillSlotsPage QLabel#slotMiniLbl {{
   color: #94a3b8;
   font-size: 11px;
@@ -834,6 +859,17 @@ QWidget#slotRowWrap {{
   background: transparent;
 }}
 
+/* 스킬 라이브러리 헤더 */
+QWidget#skillLibHeader {{
+  background: #e2e8f0;
+  border-radius: {_R};
+}}
+QLabel#skillLibHeaderLabel {{
+  color: #334155;
+  font-size: 11px;
+  font-weight: bold;
+}}
+
 QSpinBox, QLineEdit, QDoubleSpinBox {{
   background: #f8fafc;
   border: 1px solid #e2e8f0;
@@ -925,6 +961,19 @@ QWidget#skillSlotsPage QPushButton#slotSwapPriCombo {{
   color: #475569;
 }}
 QWidget#skillSlotsPage QPushButton#slotSwapPriCombo:hover {{ background: #e2e8f0; }}
+QPushButton#skillInfoPriBtn {{
+  background: #f1f5f9;
+  border: none;
+  border-radius: {_R};
+  padding: 2px 4px;
+  min-height: 28px;
+  max-height: 32px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+}}
+QPushButton#skillInfoPriBtn:hover {{ background: #e2e8f0; }}
+QPushButton#skillInfoPriBtn:pressed {{ background: #cbd5e1; }}
 QWidget#skillSlotsPage QLabel#slotMiniLbl {{
   color: #64748b;
   font-size: 11px;
@@ -1044,7 +1093,12 @@ QSlider::add-page:horizontal {{
 # (카테고리 제목, [(단색 기호, 라벨, 페이지 인덱스), ...])
 _NAV_GROUPS: list[tuple[str, list[tuple[str, str, int]]]] = [
     ("캡처", [("◫", "캡처 설정", 0)]),
-    ("매크로 설정", [("≡", "매칭 설정", 1), ("⊞", "스킬 슬롯", 2), ("⌗", "프리셋", 3)]),
+    ("매크로 설정", [
+        ("≡", "매칭 설정", 1),
+        ("⊞", "스킬 슬롯", 2),
+        ("★", "스킬 정보", 6),
+        ("⌗", "프리셋", 3),
+    ]),
     ("실행", [("▶", "실행", 4)]),
     ("정보", [("ℹ", "버전 정보", 5)]),
 ]
@@ -1519,7 +1573,7 @@ class MainWindow(QMainWindow):
         # 커스텀 타이틀바: OS 프레임 제거 (초기에 한 번만 설정)
         self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.FramelessWindowHint)
         self.setWindowTitle(f"{APP_NAME} v{APP_VERSION}")
-        self.setMinimumSize(1080, 680)
+        self.setMinimumSize(1140, 720)
         _lp = yasu_logo_path()
         if _lp is not None:
             self.setWindowIcon(QIcon(str(_lp)))
@@ -1529,15 +1583,18 @@ class MainWindow(QMainWindow):
             dict(self._cfg.skill_bar_roi) if self._cfg.skill_bar_roi else None
         )
         self._skill_edits: list[KeyCaptureEdit] = []
-        self._slot_pri_combos: list[SlotPriorityMenuButton] = []
+        self._slot_pri_combos: list[QSpinBox] = []
         self._slot_skill_enabled_cbs: list[QCheckBox] = []
         self._slot_swap_skill_enabled_cbs: list[QCheckBox] = []  # ② 독립 토글
-        self._slot_pri2_combos: list[SlotPriorityMenuButton] = []
+        self._slot_pri2_combos: list[QSpinBox] = []
         self._slot_save2_btns: list[QPushButton] = []
         self._slot_swap_toggles: list[QCheckBox] = []
+        self._slot_skill_combos: list[QComboBox] = []    # 바1 슬롯-스킬 선택
+        self._swap_skill_combos: list[QComboBox] = []    # 바2 슬롯-스킬 선택
         self._worker: CycleWorker | None = None
         self._pending_update_info: object = None
         self._pending_new_exe = None
+        self._skill_info_row_widgets: list[dict] = []
         self._settings = QSettings("Yasu2947", "DokkaebiSkillMacro")
         self._current_theme: str = self._settings.value("theme", "dark", type=str)  # type: ignore[assignment]
         self._hotkey_listener = HotkeyListener(self)
@@ -1591,9 +1648,9 @@ class MainWindow(QMainWindow):
 
         self._place_window()
 
-        # Hotkey
+        # Hotkey — pynput Listener 시작을 윈도우 표시 이후로 지연
         self._hotkey_listener.triggered.connect(self._on_hotkey_triggered)
-        self._apply_hotkey(self._cfg.run_hotkey or "")
+        QTimer.singleShot(600, lambda: self._apply_hotkey(self._cfg.run_hotkey or ""))
         self.ed_run_hotkey.textChanged.connect(
             lambda _t: self._apply_hotkey(self.ed_run_hotkey.text().strip())
         )
@@ -1624,12 +1681,13 @@ class MainWindow(QMainWindow):
 
         self._content_stack = QStackedWidget(mid)
         self._content_stack.setObjectName("contentWrap")
-        self._content_stack.addWidget(self._wrap_scroll(self._page_screen_roi()))
-        self._content_stack.addWidget(self._wrap_scroll(self._page_match_settings()))
-        self._content_stack.addWidget(self._wrap_scroll(self._page_skill_slots()))
-        self._content_stack.addWidget(self._wrap_scroll(self._page_presets()))
-        self._content_stack.addWidget(self._wrap_scroll(self._page_run()))
-        self._content_stack.addWidget(self._wrap_scroll(self._page_version_info()))
+        self._content_stack.addWidget(self._wrap_scroll(self._page_screen_roi()))     # 0
+        self._content_stack.addWidget(self._wrap_scroll(self._page_match_settings()))  # 1
+        self._content_stack.addWidget(self._wrap_scroll(self._page_skill_slots()))     # 2
+        self._content_stack.addWidget(self._wrap_scroll(self._page_presets()))         # 3
+        self._content_stack.addWidget(self._wrap_scroll(self._page_run()))             # 4
+        self._content_stack.addWidget(self._wrap_scroll(self._page_version_info()))    # 5
+        self._content_stack.addWidget(self._wrap_scroll(self._page_skill_info()))      # 6
         hl.addWidget(self._content_stack, 1)
 
         vl.addWidget(mid, 1)
@@ -2161,43 +2219,27 @@ class MainWindow(QMainWindow):
         cv_as.addWidget(as_hint)
         vl.addWidget(card_as)
 
-        card_raid, cv_raid = self._card(page, "레이드 모드")
-        self._chk_raid = QCheckBox(
-            "레이드 모드 (마지막 스킬 발동 후 아래 시간 안에 아무 스킬도 못 쓰면 스왑 후 계속 · 중단까지 반복)"
+        # ── 딜사이클 모드 카드 ────────────────────────────────────────────────
+        card_dc, cv_dc = self._card(page, "딜사이클 모드")
+        self._chk_cycle = QCheckBox("딜사이클 모드 사용 (스킬 정보 탭 쿨타임 기반 최적 순서 · 중단까지 무한)")
+        self._chk_cycle.setChecked(self._cfg.cycle_mode_enabled)
+        self._chk_cycle.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._chk_cycle.toggled.connect(self._on_cycle_mode_toggled)
+        cv_dc.addWidget(self._chk_cycle)
+
+        self._lbl_cycle_rotation = QLabel("")
+        self._lbl_cycle_rotation.setObjectName("accentHint")
+        self._lbl_cycle_rotation.setWordWrap(True)
+        cv_dc.addWidget(self._lbl_cycle_rotation)
+
+        dc_hint = QLabel(
+            "스킬 정보 탭에서 슬롯별 정보(쿨타임·배율·타수)를 입력하세요.\n"
+            "실행 버튼(또는 단축키)이 딜사이클 모드로 자동 전환됩니다."
         )
-        self._chk_raid.setChecked(self._cfg.raid_mode_enabled)
-        self._chk_raid.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._chk_raid.toggled.connect(self._sync_run_button_label)
-        cv_raid.addWidget(self._chk_raid)
-        form_raid = QFormLayout()
-        form_raid.setSpacing(10)
-        form_raid.setHorizontalSpacing(18)
-        self._dbl_raid_idle = NoWheelDoubleSpinBox()
-        self._dbl_raid_idle.setRange(0.1, 600.0)
-        self._dbl_raid_idle.setDecimals(1)
-        self._dbl_raid_idle.setSingleStep(0.1)
-        self._dbl_raid_idle.setSuffix(" 초")
-        self._dbl_raid_idle.setValue(float(self._cfg.raid_idle_sec))
-        _raid_idle_row = QHBoxLayout()
-        _raid_idle_row.setContentsMargins(0, 0, 0, 0)
-        _raid_idle_row.setSpacing(8)
-        _raid_idle_row.addWidget(self._dbl_raid_idle)
-        _lbl_raid_rec = QLabel("← 0.5초 추천")
-        _lbl_raid_rec.setObjectName("accentHint")
-        _raid_idle_row.addWidget(_lbl_raid_rec)
-        _raid_idle_row.addStretch()
-        _raid_idle_wrap = QWidget()
-        _raid_idle_wrap.setLayout(_raid_idle_row)
-        form_raid.addRow(self._form_label("유휴 후 스왑"), _raid_idle_wrap)
-        cv_raid.addLayout(form_raid)
-        raid_hint = QLabel(
-            "일반 1사이클·자동 스왑 2라운드와 달리, 매칭 루프가 끝날 때까지 계속 돕니다. "
-            "실행 키 또는 [중단]으로 멈춥니다."
-        )
-        raid_hint.setObjectName("hintLabel")
-        raid_hint.setWordWrap(True)
-        cv_raid.addWidget(raid_hint)
-        vl.addWidget(card_raid)
+        dc_hint.setObjectName("hintLabel")
+        dc_hint.setWordWrap(True)
+        cv_dc.addWidget(dc_hint)
+        vl.addWidget(card_dc)
 
         # ── 실행 카드 ───────────────────────────────────────────────────────
         card_run, cv_run = self._card(page, "1사이클 실행")
@@ -2396,6 +2438,393 @@ class MainWindow(QMainWindow):
             return
         apply_update_and_restart(self._pending_new_exe)
 
+    # ─────────────────────── Skill Info Page ──────────────────────────────────
+
+    def _page_skill_info(self) -> QWidget:
+        page = QWidget(self)
+        page.setObjectName("skillInfoPage")
+        vl = QVBoxLayout(page)
+        vl.setContentsMargins(32, 24, 32, 28)
+        vl.setSpacing(16)
+
+        # ── 안내 ──
+        card_hdr, cv_hdr = self._card(page, "스킬 라이브러리")
+        hint = QLabel(
+            "사용할 스킬을 자유롭게 등록하세요 (슬롯 개수 무관).\n"
+            "이름 · 배율(×) · 쿨타임(초) · 타수를 입력 후 딜사이클 계산 → 추천 배치 적용하면\n"
+            "스킬 슬롯 탭에 자동 배치됩니다. 스킬 속도(%)는 아래 일괄 설정에서 적용하세요."
+        )
+        hint.setObjectName("hintLabel")
+        hint.setWordWrap(True)
+        cv_hdr.addWidget(hint)
+        vl.addWidget(card_hdr)
+
+        # ── 스킬 목록 (스크롤 영역) ──
+        card_rows, rows_cv = self._card(page, "등록된 스킬")
+        self._skill_lib_rows_layout = rows_cv
+        vl.addWidget(card_rows)
+
+        # ── 스킬 추가 버튼 ──
+        btn_add = QPushButton("+ 스킬 추가")
+        btn_add.setMinimumHeight(36)
+        btn_add.clicked.connect(self._add_skill_lib_row)
+        rows_cv.addWidget(btn_add)
+
+        # ── 일괄 설정 ──
+        card_speed, cv_speed = self._card(page, "일괄 설정")
+        spd_row = QHBoxLayout()
+        spd_lbl = QLabel("스킬속도 % 일괄")
+        spd_lbl.setObjectName("hintLabel")
+        spd_row.addWidget(spd_lbl)
+        self._dbl_global_speed = QDoubleSpinBox()
+        self._dbl_global_speed.setRange(0.0, 80.0)
+        self._dbl_global_speed.setSingleStep(0.5)
+        self._dbl_global_speed.setSuffix(" %")
+        self._dbl_global_speed.setFixedWidth(100)
+        self._dbl_global_speed.setValue(self._cfg.global_speed_pct)
+        spd_row.addWidget(self._dbl_global_speed)
+        btn_apply_speed = QPushButton("적용")
+        btn_apply_speed.setFixedWidth(60)
+        btn_apply_speed.clicked.connect(self._apply_global_speed)
+        spd_row.addWidget(btn_apply_speed)
+        spd_row.addStretch(1)
+        cv_speed.addLayout(spd_row)
+        btn_rec_pri = QPushButton("★  DPS 기준 우선도 자동 설정")
+        btn_rec_pri.setToolTip("배율×타수÷효과쿨 기준 자동 배정. 이동기는 항상 마지막.")
+        btn_rec_pri.clicked.connect(self._apply_recommended_priorities)
+        cv_speed.addWidget(btn_rec_pri)
+        vl.addWidget(card_speed)
+
+        # ── 딜사이클 미리보기 ──
+        card_cycle, cv_cycle = self._card(page, "딜사이클 미리보기")
+        self._lbl_cycle_preview = QLabel("(스킬 등록 후 계산하세요)")
+        self._lbl_cycle_preview.setObjectName("hintLabel")
+        self._lbl_cycle_preview.setWordWrap(True)
+        btn_preview = QPushButton("딜사이클 계산")
+        btn_preview.clicked.connect(self._refresh_cycle_preview)
+        self._btn_apply_placement = QPushButton("추천 배치 슬롯에 적용")
+        self._btn_apply_placement.setEnabled(False)
+        self._btn_apply_placement.setToolTip(
+            "계산된 추천 배치를 스킬 슬롯 탭의 슬롯-스킬 선택에 자동 반영합니다."
+        )
+        self._btn_apply_placement.clicked.connect(self._apply_placement_recommendation)
+        cv_cycle.addWidget(self._lbl_cycle_preview)
+        btn_row = QHBoxLayout()
+        btn_row.addWidget(btn_preview)
+        btn_row.addWidget(self._btn_apply_placement)
+        btn_row.addStretch(1)
+        cv_cycle.addLayout(btn_row)
+        vl.addWidget(card_cycle)
+
+        vl.addStretch(1)
+
+        self._skill_lib_row_widgets: list[dict] = []
+        self._last_placement: list[int] = list(self._cfg.last_rotation)
+        self._load_skill_lib_rows()
+        # 스킬 라이브러리 로드 후 슬롯 콤보 갱신 및 저장된 배치 복원
+        self._refresh_slot_skill_combos()
+        for _i, _cmb in enumerate(self._slot_skill_combos):
+            _sid = self._cfg.slot_skill_ids[_i] if _i < len(self._cfg.slot_skill_ids) else ""
+            self._set_combo_by_skill_id(_cmb, _sid)
+        for _i, _cmb in enumerate(self._swap_skill_combos):
+            _sid = self._cfg.swap_slot_skill_ids[_i] if _i < len(self._cfg.swap_slot_skill_ids) else ""
+            self._set_combo_by_skill_id(_cmb, _sid)
+        if hasattr(self, "_btn_apply_placement"):
+            self._btn_apply_placement.setEnabled(bool(self._last_placement))
+        return page
+
+    # ── 스킬 라이브러리 행 관리 ──────────────────────────────────────────────
+
+    def _skill_lib_col_header(self) -> None:
+        """헤더 행 추가 (처음 한 번만) — 테이블 헤더처럼 강조."""
+        ly = self._skill_lib_rows_layout
+        _W = [88, 86, 80, 56, 68, 42, 42, 24]
+        _H = ["스킬명", "배율(x)", "쿨타임(s)", "타수", "우선도\n(0=자동)", "이동기", "사이클", ""]
+        _TIPS = [
+            "스킬 식별 이름",
+            "데미지 배율 (소수점 2자리)",
+            "기본 쿨타임 (초)",
+            "1회 발동 히트 수",
+            "딜사이클 우선순위\n0=자동(DPS기준) | 1=최우선 | 7=최후순",
+            "이동기 여부 — 체크 시 딜사이클 맨 뒤 배치",
+            "딜사이클 포함 여부 — 체크 해제 시 제외",
+            "",
+        ]
+        hdr_wrap = QWidget()
+        hdr_wrap.setObjectName("skillLibHeader")
+        hdr_layout = QHBoxLayout(hdr_wrap)
+        hdr_layout.setSpacing(4)
+        hdr_layout.setContentsMargins(0, 4, 0, 4)
+        for txt, tip, w in zip(_H, _TIPS, _W):
+            lbl = QLabel(txt)
+            lbl.setObjectName("skillLibHeaderLabel")
+            lbl.setFixedWidth(w)
+            lbl.setWordWrap(True)
+            lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            if tip:
+                lbl.setToolTip(tip)
+            hdr_layout.addWidget(lbl)
+        hdr_layout.addStretch(1)
+        ly.insertWidget(0, hdr_wrap)
+
+    def _add_skill_lib_row(self, skill_dict: dict | None = None) -> None:
+        from src.core.skill_info import SkillInfo, new_skill_id
+        from PyQt6.QtWidgets import QFrame
+        ly = self._skill_lib_rows_layout
+
+        # clicked 시그널은 bool(checked)를 전달하므로 dict가 아닌 경우 전부 새 행으로 처리
+        if not isinstance(skill_dict, dict):
+            skill_dict = SkillInfo().to_dict()
+            skill_dict["id"] = new_skill_id()
+        sid = str(skill_dict.get("id") or new_skill_id())
+        info = SkillInfo.from_dict(skill_dict)
+
+        _W = [88, 86, 80, 56, 68, 42, 42, 24]
+        # 스킬 라이브러리 스핀박스는 글로벌 QSS padding(9px 12px)을 줄여서 폭 절약
+        _SP_STYLE = "padding: 2px 5px;"
+
+        wrap = QFrame()
+        wrap.setObjectName("slotRowWrap")
+        row = QHBoxLayout(wrap)
+        row.setSpacing(4)
+        row.setContentsMargins(0, 2, 0, 2)
+
+        ed_name = QLineEdit(info.name)
+        ed_name.setFixedWidth(_W[0])
+        ed_name.setPlaceholderText("스킬명")
+        ed_name.setToolTip("스킬 이름 (식별용)")
+        ed_name.setStyleSheet("padding: 2px 6px;")
+        row.addWidget(ed_name)
+
+        dbl_mult = QDoubleSpinBox()
+        dbl_mult.setRange(0.0, 9999.0); dbl_mult.setSingleStep(0.1)
+        dbl_mult.setDecimals(2); dbl_mult.setValue(info.dmg_mult)
+        dbl_mult.setSuffix(" x")
+        dbl_mult.setFixedWidth(_W[1])
+        dbl_mult.setStyleSheet(_SP_STYLE)
+        dbl_mult.setToolTip("데미지 배율 (소수점 2자리)")
+        row.addWidget(dbl_mult)
+
+        dbl_cd = QDoubleSpinBox()
+        dbl_cd.setRange(0.0, 600.0); dbl_cd.setSingleStep(0.5)
+        dbl_cd.setDecimals(1); dbl_cd.setValue(info.cooldown_sec)
+        dbl_cd.setSuffix(" s")
+        dbl_cd.setFixedWidth(_W[2])
+        dbl_cd.setStyleSheet(_SP_STYLE)
+        dbl_cd.setToolTip("스킬 쿨타임 (초 단위)")
+        row.addWidget(dbl_cd)
+
+        sp_hits = QSpinBox()
+        sp_hits.setRange(1, 99); sp_hits.setValue(info.hits)
+        sp_hits.setFixedWidth(_W[3])
+        sp_hits.setStyleSheet(_SP_STYLE)
+        sp_hits.setToolTip("스킬 1회 발동 시 히트 수")
+        row.addWidget(sp_hits)
+
+        sp_pri = QSpinBox()
+        sp_pri.setRange(0, 99)
+        sp_pri.setValue(info.priority)
+        sp_pri.setSpecialValueText("자동")  # 0 → "자동" 표시
+        sp_pri.setFixedWidth(_W[4])
+        sp_pri.setStyleSheet(_SP_STYLE)
+        sp_pri.setToolTip(
+            "딜사이클 우선순위\n"
+            "0 = 자동 (DPS 기준 자동 결정)\n"
+            "1 = 최우선 (가장 먼저 배치)\n"
+            "7 = 최후순 (가장 나중에 배치)\n"
+            "이동기 체크 시 이 값과 무관하게 항상 맨 뒤"
+        )
+        row.addWidget(sp_pri)
+
+        chk_move = QCheckBox()
+        chk_move.setChecked(info.is_movement)
+        chk_move.setFixedWidth(_W[5])
+        chk_move.setToolTip("이동기 체크 시 딜사이클 맨 뒤로 배치됩니다")
+        row.addWidget(chk_move)
+
+        chk_cycle = QCheckBox()
+        chk_cycle.setChecked(info.enabled_in_cycle)
+        chk_cycle.setFixedWidth(_W[6])
+        chk_cycle.setToolTip("딜사이클 계산에 이 스킬 포함 여부")
+        row.addWidget(chk_cycle)
+
+        btn_del = QPushButton("×")
+        btn_del.setFixedWidth(_W[7])
+        btn_del.setToolTip("이 스킬 삭제")
+        row.addWidget(btn_del)
+        row.addStretch(1)
+
+        # +스킬 추가 버튼 바로 앞(끝에서 두 번째)에 삽입
+        insert_pos = ly.count() - 1
+        ly.insertWidget(insert_pos, wrap)
+
+        # speed_pct는 UI에서 직접 입력받지 않고 일괄설정 적용값을 보존
+        widgets = {
+            "id": sid, "wrap": wrap,
+            "name": ed_name, "mult": dbl_mult, "cd": dbl_cd,
+            "hits": sp_hits, "priority": sp_pri,
+            "movement": chk_move, "cycle": chk_cycle,
+            "speed_pct": float(skill_dict.get("speed_pct", 0.0)),
+        }
+        self._skill_lib_row_widgets.append(widgets)
+
+        def _del(_, w=widgets):
+            self._remove_skill_lib_row(w)
+
+        btn_del.clicked.connect(_del)
+
+        # 스킬 추가/삭제 시 슬롯 콤보 갱신
+        ed_name.textChanged.connect(lambda _: self._refresh_slot_skill_combos())
+
+    def _remove_skill_lib_row(self, widgets: dict) -> None:
+        sid = widgets["id"]
+        wrap = widgets["wrap"]
+        self._skill_lib_row_widgets = [
+            w for w in self._skill_lib_row_widgets if w["id"] != sid
+        ]
+        wrap.hide()
+        wrap.deleteLater()
+        self._refresh_slot_skill_combos()
+
+    def _load_skill_lib_rows(self) -> None:
+        """config의 skill_library로부터 UI 행 생성."""
+        # 기존 행 정리
+        ly = self._skill_lib_rows_layout
+        for w in self._skill_lib_row_widgets:
+            w["wrap"].deleteLater()
+        self._skill_lib_row_widgets = []
+        # 헤더가 없으면 추가
+        if ly.count() <= 1:  # 추가 버튼만 있음
+            self._skill_lib_col_header()
+        for skill_dict in self._cfg.skill_library:
+            self._add_skill_lib_row(skill_dict)
+
+    def _collect_skill_library(self) -> list[dict]:
+        """현재 UI 입력값으로부터 skill_library 수집."""
+        from src.core.skill_info import SkillInfo
+        result = []
+        for w in self._skill_lib_row_widgets:
+            d = SkillInfo(
+                name=w["name"].text().strip(),
+                dmg_mult=w["mult"].value(),
+                cooldown_sec=w["cd"].value(),
+                hits=w["hits"].value(),
+                speed_pct=float(w.get("speed_pct", 0.0)),
+                enabled_in_cycle=w["cycle"].isChecked(),
+                priority=w["priority"].value(),  # QSpinBox → int 직접
+                is_movement=w["movement"].isChecked(),
+            ).to_dict()
+            d["id"] = w["id"]
+            result.append(d)
+        return result
+
+    # ── 하위 호환 (구 코드에서 호출하던 메서드 유지) ──────────────────────────
+
+    def _collect_skill_infos(self) -> list[dict]:
+        """레거시 호환: 현재 library 반환."""
+        return self._collect_skill_library()
+
+    def _rebuild_skill_info_rows(self) -> None:
+        """레거시 호환: 라이브러리 UI 재로드."""
+        if hasattr(self, "_skill_lib_row_widgets"):
+            self._load_skill_lib_rows()
+
+    def _reload_skill_infos(self) -> None:
+        """레거시 호환."""
+        if hasattr(self, "_skill_lib_row_widgets"):
+            self._load_skill_lib_rows()
+
+    # ── 일괄 설정 ─────────────────────────────────────────────────────────────
+
+    def _apply_global_speed(self) -> None:
+        if not hasattr(self, "_dbl_global_speed"):
+            return
+        spd = self._dbl_global_speed.value()
+        for w in self._skill_lib_row_widgets:
+            w["speed_pct"] = spd
+
+    def _apply_recommended_priorities(self) -> None:
+        from src.core.skill_info import SkillInfo, normalize_skill_infos, apply_recommended_priorities
+        raw = self._collect_skill_library()
+        infos = normalize_skill_infos(raw, len(raw))
+        updated = apply_recommended_priorities(infos)
+        for i, w in enumerate(self._skill_lib_row_widgets):
+            if i < len(updated):
+                w["priority"].setValue(updated[i].priority)  # QSpinBox.setValue
+
+    # ── 딜사이클 미리보기 ──────────────────────────────────────────────────────
+
+    def _refresh_cycle_preview(self) -> None:
+        from src.core.skill_info import (
+            SkillInfo, compute_rotation, normalize_skill_infos,
+            rotation_summary, slot_placement_recommendation,
+        )
+        raw = self._collect_skill_library()
+        n = len(raw)
+        if n == 0:
+            self._lbl_cycle_preview.setText("등록된 스킬이 없습니다.")
+            self._btn_apply_placement.setEnabled(False)
+            return
+        infos = normalize_skill_infos(raw, n)
+        gap = self._cfg.slot_gap_ms / 1000.0
+        rotation = compute_rotation(infos, gap)
+        self._last_placement = rotation  # 저장
+
+        lines = [rotation_summary(infos, rotation)]
+        rec = slot_placement_recommendation(infos, rotation)
+        if rec:
+            lines.append("")
+            lines.append("── 배치 추천 ──")
+            lines.append(rec)
+        self._lbl_cycle_preview.setText("\n".join(lines))
+        self._btn_apply_placement.setEnabled(bool(rotation))
+
+    def _apply_placement_recommendation(self) -> None:
+        """추천 rotation → 슬롯 탭 스킬 선택 콤보 + 우선도 스핀박스 자동 반영."""
+        rotation = getattr(self, "_last_placement", [])
+        if not rotation:
+            QMessageBox.warning(self, "추천 배치", "먼저 '딜사이클 계산' 버튼을 눌러 사이클을 계산하세요.")
+            return
+
+        # 콤보박스를 최신 스킬 라이브러리로 갱신
+        self._refresh_slot_skill_combos()
+
+        library = self._collect_skill_library()
+        slot_count = self.sp_slots.value() if hasattr(self, "sp_slots") else 1
+
+        # 앞 slot_count 개 → 바1, 나머지 → 바2
+        bar1_idxs = rotation[:slot_count]
+        bar2_idxs = rotation[slot_count: slot_count * 2]
+
+        bar1_combos = getattr(self, "_slot_skill_combos", [])
+        bar2_combos = getattr(self, "_swap_skill_combos", [])
+        pri_combos = getattr(self, "_slot_pri_combos", [])
+        pri2_combos = getattr(self, "_slot_pri2_combos", [])
+
+        for slot_i, lib_i in enumerate(bar1_idxs):
+            if slot_i < len(bar1_combos) and lib_i < len(library):
+                sid = library[lib_i]["id"]
+                self._set_combo_by_skill_id(bar1_combos[slot_i], sid)
+            if slot_i < len(pri_combos):
+                pri_combos[slot_i].setValue(slot_i + 1)  # 순서대로 1, 2, 3 …
+
+        for slot_i, lib_i in enumerate(bar2_idxs):
+            if slot_i < len(bar2_combos) and lib_i < len(library):
+                sid = library[lib_i]["id"]
+                self._set_combo_by_skill_id(bar2_combos[slot_i], sid)
+            if slot_i < len(pri2_combos):
+                pri2_combos[slot_i].setValue(slot_i + 1)
+
+        # 슬롯 탭으로 이동해 결과 바로 확인
+        if hasattr(self, "_content_stack"):
+            self._switch_page(2)  # 2 = 스킬 슬롯 탭
+
+        QMessageBox.information(
+            self, "적용 완료",
+            f"추천 배치 {len(bar1_idxs)}개 슬롯을 반영했습니다.\n"
+            "슬롯 탭에서 슬롯 영역 지정 및 템플릿 저장을 진행하세요."
+        )
+
     # ═══════════════════════════ LOGIC METHODS ═══════════════════════════════
 
     def _on_welcome_continue(self) -> None:
@@ -2543,21 +2972,26 @@ class MainWindow(QMainWindow):
     def _place_window(self) -> None:
         scr = QGuiApplication.primaryScreen()
         if scr is None:
-            self.resize(1040, 700)
+            self.resize(1140, 720)
             return
         ag = scr.availableGeometry()
-        w = max(960, min(1120, ag.width() - 80))
-        h = max(600, min(740, ag.height() - 80))
+        w = max(1140, min(1280, ag.width() - 60))
+        h = max(720, min(820, ag.height() - 60))
         self.resize(w, h)
         fg = self.frameGeometry()
         fg.moveCenter(ag.center())
         self.move(fg.topLeft())
 
+    def _on_cycle_mode_toggled(self, checked: bool) -> None:
+        pass
+        self._sync_run_button_label()
+
     def _sync_run_button_label(self) -> None:
         if not hasattr(self, "btn_run"):
             return
-        if getattr(self, "_chk_raid", None) and self._chk_raid.isChecked():
-            self.btn_run.setText("레이드 시작")
+        cycle = getattr(self, "_chk_cycle", None) and self._chk_cycle.isChecked()
+        if cycle:
+            self.btn_run.setText("딜사이클 시작")
         else:
             self.btn_run.setText("1사이클 실행")
 
@@ -2681,6 +3115,12 @@ class MainWindow(QMainWindow):
         if rel:
             self.ed_template.setText(rel)
         self._refresh_roi_mode_label()
+
+        # 프리셋 로드 즉시 config.json에 저장 (재시작 후에도 영역 유지)
+        cfg = self._gather()
+        save_config(cfg)
+        self._cfg = cfg
+
         QMessageBox.information(self, "불러오기", f"프리셋 「{data.get('name')}」을(를) 적용했습니다.")
         self._clear_preset_card_styles()
         self._selected_preset_name = None
@@ -2764,16 +3204,13 @@ class MainWindow(QMainWindow):
         self._slot_roi_list = self._slot_roi_list[:n]
         self._slot_rebuild_timer.start()
         self._refresh_roi_mode_label()
+        self._rebuild_skill_info_rows()
 
     def _collect_keys_from_ui(self) -> list[str]:
         return [ed.text().strip() or "2" for ed in self._skill_edits]
 
-    def _collect_priorities_from_ui(self) -> list[str]:
-        out: list[str] = []
-        for cb in self._slot_pri_combos:
-            v = cb.currentData()
-            out.append(str(v) if v is not None else "normal")
-        return out
+    def _collect_priorities_from_ui(self) -> list[int]:
+        return [cb.value() for cb in self._slot_pri_combos]
 
     def _on_slot_swap_toggled(self, idx: int, on: bool) -> None:
         self._set_row_swap_expanded(idx, on)
@@ -2787,6 +3224,8 @@ class MainWindow(QMainWindow):
             self._slot_skill_enabled_cbs[idx].setText("①" if on else "사용")
         if idx < len(self._slot_swap_skill_enabled_cbs):
             self._slot_swap_skill_enabled_cbs[idx].setVisible(on)
+        if idx < len(self._swap_skill_combos):
+            self._swap_skill_combos[idx].setVisible(on)
 
     def _rebuild_slot_rows(self) -> None:
         lay = getattr(self, "_slot_rows_inner", None)
@@ -2821,6 +3260,10 @@ class MainWindow(QMainWindow):
             self._slot_skill_enabled_cbs.pop()
             if self._slot_swap_skill_enabled_cbs:
                 self._slot_swap_skill_enabled_cbs.pop()
+            if self._slot_skill_combos:
+                self._slot_skill_combos.pop()
+            if self._swap_skill_combos:
+                self._swap_skill_combos.pop()
 
         # ── 늘리기: 끝에 새 행만 추가 ────────────────────────────────────────
         cfg_sk2 = normalize_slot_skill_enabled(self._cfg.slot_swap_skill_enabled, n)
@@ -2838,13 +3281,18 @@ class MainWindow(QMainWindow):
             num.setFixedWidth(26)
             num.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-            p0 = cfg_pri[i] if i < len(cfg_pri) else "normal"
-            pri = SlotPriorityMenuButton("slotPriCombo", wrap)
-            pri.setCurrentKey(str(p0) if p0 in ("first", "normal", "last") else "normal")
+            p0 = cfg_pri[i] if i < len(cfg_pri) else 0
+            pri = QSpinBox(wrap)
+            pri.setObjectName("slotPriCombo")
+            pri.setRange(0, 7)
+            pri.setValue(int(p0))
+            pri.setFixedWidth(42)
+            pri.setToolTip("슬롯 실행 우선도\n0=자동(슬롯순) | 1=최우선 | 7=최후순")
+            pri.setStyleSheet("padding: 2px 4px;")
 
             ed = KeyCaptureEdit(wrap)
             ed.setObjectName("slotKeyEdit")
-            ed.setMinimumWidth(72)
+            ed.setMinimumWidth(80)
             ed.setMaximumWidth(100)
             if i < len(self._cfg.skill_keys):
                 ed.setText(self._cfg.skill_keys[i])
@@ -2866,9 +3314,14 @@ class MainWindow(QMainWindow):
             btn_save2.setMaximumWidth(68)
             btn_save2.setToolTip(template_filename_swap(i))
 
-            p2v = cfg_pri2[i] if i < len(cfg_pri2) else "normal"
-            pri2 = SlotPriorityMenuButton("slotSwapPriCombo", wrap)
-            pri2.setCurrentKey(str(p2v) if p2v in ("first", "normal", "last") else "normal")
+            p2v = cfg_pri2[i] if i < len(cfg_pri2) else 0
+            pri2 = QSpinBox(wrap)
+            pri2.setObjectName("slotSwapPriCombo")
+            pri2.setRange(0, 7)
+            pri2.setValue(int(p2v))
+            pri2.setFixedWidth(42)
+            pri2.setToolTip("스왑(바2) 슬롯 실행 우선도\n0=자동(슬롯순) | 1=최우선 | 7=최후순")
+            pri2.setStyleSheet("padding: 2px 4px;")
 
             sw_on = cfg_sw_en[i] if i < len(cfg_sw_en) else False
             chk_swap = QCheckBox("스왑")
@@ -2894,6 +3347,33 @@ class MainWindow(QMainWindow):
             chk_swap_skill.setCursor(Qt.CursorShape.PointingHandCursor)
             chk_swap_skill.setVisible(sw_on)
 
+            # ── 스킬 선택 콤보박스 (바1) ──
+            cmb_skill1 = QComboBox(wrap)
+            cmb_skill1.setObjectName("slotSkillCombo")
+            cmb_skill1.setMinimumWidth(110)
+            cmb_skill1.setMaximumWidth(160)
+            cmb_skill1.setToolTip("이 슬롯에 배치할 스킬 선택 (바1)")
+            self._populate_skill_combo(cmb_skill1)
+            saved_id1 = (
+                self._cfg.slot_skill_ids[i]
+                if i < len(self._cfg.slot_skill_ids) else ""
+            )
+            self._set_combo_by_skill_id(cmb_skill1, saved_id1)
+
+            # ── 스킬 선택 콤보박스 (바2/스왑) ──
+            cmb_skill2 = QComboBox(wrap)
+            cmb_skill2.setObjectName("slotSkillCombo")
+            cmb_skill2.setMinimumWidth(110)
+            cmb_skill2.setMaximumWidth(160)
+            cmb_skill2.setToolTip("이 슬롯에 배치할 스킬 선택 (바2·스왑)")
+            cmb_skill2.setVisible(sw_on)
+            self._populate_skill_combo(cmb_skill2)
+            saved_id2 = (
+                self._cfg.swap_slot_skill_ids[i]
+                if i < len(self._cfg.swap_slot_skill_ids) else ""
+            )
+            self._set_combo_by_skill_id(cmb_skill2, saved_id2)
+
             si = i
             btn_roi.clicked.connect(lambda _=False, x=si: self._pick_slot_roi(x))
             btn_ready.clicked.connect(
@@ -2910,11 +3390,13 @@ class MainWindow(QMainWindow):
             row.addWidget(num, 0, Qt.AlignmentFlag.AlignVCenter)
             row.addWidget(pri, 0, Qt.AlignmentFlag.AlignVCenter)
             row.addWidget(ed, 0, Qt.AlignmentFlag.AlignVCenter)
+            row.addWidget(cmb_skill1, 0, Qt.AlignmentFlag.AlignVCenter)
             row.addWidget(btn_roi, 0, Qt.AlignmentFlag.AlignVCenter)
             row.addWidget(btn_ready, 0, Qt.AlignmentFlag.AlignVCenter)
+            row.addWidget(chk_swap, 0, Qt.AlignmentFlag.AlignVCenter)
+            row.addWidget(cmb_skill2, 0, Qt.AlignmentFlag.AlignVCenter)
             row.addWidget(pri2, 0, Qt.AlignmentFlag.AlignVCenter)
             row.addWidget(btn_save2, 0, Qt.AlignmentFlag.AlignVCenter)
-            row.addWidget(chk_swap, 0, Qt.AlignmentFlag.AlignVCenter)
             row.addWidget(chk_skill, 0, Qt.AlignmentFlag.AlignVCenter)
             row.addWidget(chk_swap_skill, 0, Qt.AlignmentFlag.AlignVCenter)
             row.addStretch(1)
@@ -2927,6 +3409,8 @@ class MainWindow(QMainWindow):
             self._slot_swap_toggles.append(chk_swap)
             self._slot_skill_enabled_cbs.append(chk_skill)
             self._slot_swap_skill_enabled_cbs.append(chk_swap_skill)
+            self._slot_skill_combos.append(cmb_skill1)
+            self._swap_skill_combos.append(cmb_skill2)
 
         self._sync_slot_hdr_buttons()
 
@@ -2967,6 +3451,42 @@ class MainWindow(QMainWindow):
         buf.tofile(str(out_path))
         QMessageBox.information(self, "저장됨", str(out_path))
 
+    # ── 슬롯-스킬 콤보박스 헬퍼 ──────────────────────────────────────────────
+
+    def _populate_skill_combo(self, combo: QComboBox) -> None:
+        """콤보박스에 현재 라이브러리 스킬 목록 채우기."""
+        prev_id = combo.currentData() or ""
+        combo.blockSignals(True)
+        combo.clear()
+        combo.addItem("(없음)", "")
+        library = getattr(self, "_skill_lib_row_widgets", [])
+        for w in library:
+            name = w["name"].text().strip() or f"[{w['id'][:4]}]"
+            combo.addItem(name, w["id"])
+        self._set_combo_by_skill_id(combo, prev_id)
+        combo.blockSignals(False)
+
+    def _set_combo_by_skill_id(self, combo: QComboBox, skill_id: str) -> None:
+        """콤보박스를 skill_id에 해당하는 항목으로 설정."""
+        for idx in range(combo.count()):
+            if combo.itemData(idx) == skill_id:
+                combo.setCurrentIndex(idx)
+                return
+        combo.setCurrentIndex(0)
+
+    def _refresh_slot_skill_combos(self) -> None:
+        """라이브러리 변경 시 슬롯 탭의 모든 콤보박스 갱신."""
+        for combo in getattr(self, "_slot_skill_combos", []):
+            self._populate_skill_combo(combo)
+        for combo in getattr(self, "_swap_skill_combos", []):
+            self._populate_skill_combo(combo)
+
+    def _collect_slot_skill_ids(self) -> tuple[list[str], list[str]]:
+        """슬롯 콤보박스에서 (slot_skill_ids, swap_slot_skill_ids) 수집."""
+        s1 = [c.currentData() or "" for c in getattr(self, "_slot_skill_combos", [])]
+        s2 = [c.currentData() or "" for c in getattr(self, "_swap_skill_combos", [])]
+        return s1, s2
+
     def _gather(self) -> AppConfig:
         self._flush_pending_slot_rebuild()
         keys = self._collect_keys_from_ui()
@@ -2991,8 +3511,6 @@ class MainWindow(QMainWindow):
             run_hotkey=self.ed_run_hotkey.text().strip(),
             auto_swap_enabled=self._chk_auto_run.isChecked(),
             swap_delay_ms=self.sp_swap_delay.value(),
-            raid_mode_enabled=self._chk_raid.isChecked(),
-            raid_idle_sec=float(self._dbl_raid_idle.value()),
             slot_priorities=normalize_slot_priorities(
                 self._collect_priorities_from_ui(), n
             ),
@@ -3006,12 +3524,26 @@ class MainWindow(QMainWindow):
                 [cb.isChecked() for cb in self._slot_swap_toggles], n
             ),
             slot_swap_priorities=normalize_slot_priorities(
-                [
-                    str(cb.currentData()) if cb.currentData() is not None else "normal"
-                    for cb in self._slot_pri2_combos
-                ],
+                [cb.value() for cb in self._slot_pri2_combos],
                 n,
             ),
+            skill_infos=self._cfg.skill_infos,
+            cycle_mode_enabled=bool(
+                getattr(self, "_chk_cycle", None) and self._chk_cycle.isChecked()
+            ),
+            dummy_mode_enabled=False,
+            skill_library=(
+                self._collect_skill_library()
+                if hasattr(self, "_skill_lib_row_widgets")
+                else self._cfg.skill_library
+            ),
+            slot_skill_ids=self._collect_slot_skill_ids()[0],
+            swap_slot_skill_ids=self._collect_slot_skill_ids()[1],
+            global_speed_pct=(
+                self._dbl_global_speed.value()
+                if hasattr(self, "_dbl_global_speed") else 0.0
+            ),
+            last_rotation=list(getattr(self, "_last_placement", [])),
         )
 
     def _save(self) -> None:
@@ -3051,11 +3583,11 @@ class MainWindow(QMainWindow):
                 ed.setText(c.skill_keys[i])
         # 증분 방식에서는 기존 행 값을 명시적으로 config로 덮어씀
         for i, cb in enumerate(self._slot_pri_combos):
-            p = c.slot_priorities[i] if i < len(c.slot_priorities) else "normal"
-            cb.setCurrentKey(str(p) if p in ("first", "normal", "last") else "normal")
+            p = c.slot_priorities[i] if i < len(c.slot_priorities) else 0
+            cb.setValue(int(p))
         for i, cb in enumerate(self._slot_pri2_combos):
-            p = c.slot_swap_priorities[i] if i < len(c.slot_swap_priorities) else "normal"
-            cb.setCurrentKey(str(p) if p in ("first", "normal", "last") else "normal")
+            p = c.slot_swap_priorities[i] if i < len(c.slot_swap_priorities) else 0
+            cb.setValue(int(p))
         for i, cb in enumerate(self._slot_swap_toggles):
             cb.setChecked(c.slot_swap_enabled[i] if i < len(c.slot_swap_enabled) else False)
         for i, cb in enumerate(self._slot_skill_enabled_cbs):
@@ -3065,9 +3597,26 @@ class MainWindow(QMainWindow):
         self._refresh_preset_grid()
         self._refresh_roi_mode_label()
         self._chk_auto_run.setChecked(c.auto_swap_enabled)
-        self._chk_raid.setChecked(c.raid_mode_enabled)
-        self._dbl_raid_idle.setValue(float(c.raid_idle_sec))
+        if hasattr(self, "_chk_cycle"):
+            self._chk_cycle.setChecked(c.cycle_mode_enabled)
         self._sync_run_button_label()
+        # 스킬 속도 일괄설정 + 딜사이클 rotation 복원
+        if hasattr(self, "_dbl_global_speed"):
+            self._dbl_global_speed.setValue(c.global_speed_pct)
+        self._last_placement = list(c.last_rotation)
+        if hasattr(self, "_btn_apply_placement"):
+            self._btn_apply_placement.setEnabled(bool(self._last_placement))
+        # 스킬 라이브러리 재로드
+        if hasattr(self, "_skill_lib_row_widgets"):
+            self._load_skill_lib_rows()
+            self._refresh_slot_skill_combos()
+        # 슬롯-스킬 ID 복원
+        for slot_i, combo in enumerate(getattr(self, "_slot_skill_combos", [])):
+            sid = c.slot_skill_ids[slot_i] if slot_i < len(c.slot_skill_ids) else ""
+            self._set_combo_by_skill_id(combo, sid)
+        for slot_i, combo in enumerate(getattr(self, "_swap_skill_combos", [])):
+            sid = c.swap_slot_skill_ids[slot_i] if slot_i < len(c.swap_slot_skill_ids) else ""
+            self._set_combo_by_skill_id(combo, sid)
 
     def _browse_template_dir(self) -> None:
         start = Path(self.ed_template.text().strip() or ".")
@@ -3086,49 +3635,50 @@ class MainWindow(QMainWindow):
         if self._worker and self._worker.isRunning():
             self._stop_cycle()
             return
-        cfg = self._gather()
-        rects = slot_rects_for_capture(cfg.slot_rois, cfg.skill_bar_roi, cfg.slot_count)
-        if rects is None:
-            msg = (
-                "스킬바 전체 범위 또는 슬롯별 [슬롯 영역] 전체가 필요합니다. "
-                "캡처 설정·스킬 슬롯 탭에서 범위를 지정한 뒤 [저장] 하세요."
+
+        cycle_mode = getattr(self, "_chk_cycle", None) and self._chk_cycle.isChecked()
+
+        rotation_summary_text = ""
+        if cycle_mode:
+            from src.core.skill_info import (
+                compute_rotation,
+                normalize_skill_infos,
+                rotation_summary,
             )
+            cfg_pre = self._gather()
+            # 라이브러리 전체 스킬로 딜사이클 계산
+            raw_lib = cfg_pre.skill_library or cfg_pre.skill_infos
+            infos = normalize_skill_infos(raw_lib, len(raw_lib))
+            rotation = compute_rotation(infos, cfg_pre.slot_gap_ms / 1000.0)
+            if not rotation:
+                msg = "딜사이클에 포함된 슬롯이 없습니다.\n스킬 정보 탭에서 쿨타임 > 0 인 슬롯을 설정하세요."
+                if from_hotkey:
+                    self._ensure_macro_page_front()
+                    self._switch_page(4)
+                    self._append_log(f"[실행 키] {msg.splitlines()[0]}")
+                else:
+                    QMessageBox.warning(self, "딜사이클", msg)
+                return
+            rotation_summary_text = rotation_summary(infos, rotation)
+
+        w = self._build_base_worker()
+        if w is None:
             if from_hotkey:
                 self._ensure_macro_page_front()
                 self._switch_page(4)
-                self._append_log(f"[실행 키] {msg}")
-            else:
-                QMessageBox.warning(self, "범위", msg)
+                self._append_log("[실행 키] 스킬바 범위 또는 슬롯 영역을 먼저 설정하세요.")
             return
-        self._worker = CycleWorker(self)
-        self._worker.roi_dict = cfg.skill_bar_roi
-        self._worker.slot_rects = list(rects)
-        self._worker.slot_count = cfg.slot_count
-        self._worker.slot_gap_ms = cfg.slot_gap_ms
-        self._worker.skill_keys = list(cfg.skill_keys)
-        self._worker.template_dir = cfg.template_path(project_root())
-        self._worker.threshold = cfg.match_threshold
-        self._worker.slot_timeout_sec = cfg.slot_timeout_sec
-        self._worker.poll_interval_ms = cfg.poll_interval_ms
-        self._worker.post_press_delay_ms = cfg.post_press_delay_ms
-        self._worker.swap_key = cfg.swap_key
-        self._worker.auto_swap = cfg.auto_swap_enabled
-        self._worker.slot_swap_enabled = list(cfg.slot_swap_enabled)
-        self._worker.swap_delay_ms = cfg.swap_delay_ms
-        self._worker.raid_mode = cfg.raid_mode_enabled
-        self._worker.raid_idle_sec = float(cfg.raid_idle_sec)
-        self._worker.slot_priorities = list(cfg.slot_priorities)
-        self._worker.slot_skill_enabled = list(cfg.slot_skill_enabled)
-        self._worker.slot_swap_skill_enabled = list(cfg.slot_swap_skill_enabled)
-        self._worker.slot_swap_priorities = list(cfg.slot_swap_priorities)
-        self._worker.log.connect(self._append_log)
-        self._worker.finished_ok.connect(self._on_worker_finished)
+
+        w.cycle_mode = bool(cycle_mode)
+        w.dummy_mode = False
+        self._worker = w
         self.btn_run.setEnabled(False)
         self.btn_stop.setEnabled(True)
         self.log_lbl.setText("")
+        if rotation_summary_text and hasattr(self, "_lbl_cycle_rotation"):
+            self._lbl_cycle_rotation.setText(rotation_summary_text)
         if self._spinner is not None:
             self._spinner.start()
-        # 실행 탭으로 이동
         self._ensure_macro_page_front()
         self._switch_page(4)
         self._worker.start()
@@ -3146,6 +3696,55 @@ class MainWindow(QMainWindow):
             self._spinner.stop()
         self._sync_run_button_label()
 
+    def _build_base_worker(self) -> "CycleWorker | None":
+        """공통 CycleWorker 설정 후 반환. 범위 미설정 시 None."""
+        cfg = self._gather()
+        rects = slot_rects_for_capture(cfg.slot_rois, cfg.skill_bar_roi, cfg.slot_count)
+        if rects is None:
+            QMessageBox.warning(
+                self, "범위",
+                "스킬바 전체 범위 또는 슬롯별 [슬롯 영역] 전체가 필요합니다.\n"
+                "캡처 설정·스킬 슬롯 탭에서 범위를 지정한 뒤 [저장] 하세요."
+            )
+            return None
+        w = CycleWorker(self)
+        w.roi_dict = cfg.skill_bar_roi
+        w.slot_rects = list(rects)
+        w.slot_count = cfg.slot_count
+        w.slot_gap_ms = cfg.slot_gap_ms
+        w.skill_keys = list(cfg.skill_keys)
+        w.template_dir = cfg.template_path(project_root())
+        w.threshold = cfg.match_threshold
+        w.slot_timeout_sec = cfg.slot_timeout_sec
+        w.poll_interval_ms = cfg.poll_interval_ms
+        w.post_press_delay_ms = cfg.post_press_delay_ms
+        w.swap_key = cfg.swap_key
+        w.auto_swap = cfg.auto_swap_enabled
+        w.slot_swap_enabled = list(cfg.slot_swap_enabled)
+        w.swap_delay_ms = cfg.swap_delay_ms
+        w.slot_priorities = list(cfg.slot_priorities)
+        w.slot_skill_enabled = list(cfg.slot_skill_enabled)
+        w.slot_swap_skill_enabled = list(cfg.slot_swap_skill_enabled)
+        w.slot_swap_priorities = list(cfg.slot_swap_priorities)
+        # 슬롯별 유효 스킬 정보: 라이브러리+슬롯 ID로 구성
+        library = cfg.skill_library or []
+        lib_by_id = {str(d.get("id", "")): d for d in library}
+        effective: list[dict] = []
+        for slot_i in range(cfg.slot_count):
+            sid = cfg.slot_skill_ids[slot_i] if slot_i < len(cfg.slot_skill_ids) else ""
+            skill = lib_by_id.get(sid) if sid else None
+            effective.append(skill or {})
+        w.skill_infos_data = effective
+        # 바2(스왑) 스킬 정보
+        swap_effective: list[dict] = []
+        for slot_i in range(cfg.slot_count):
+            sid = cfg.swap_slot_skill_ids[slot_i] if slot_i < len(cfg.swap_slot_skill_ids) else ""
+            skill = lib_by_id.get(sid) if sid else None
+            swap_effective.append(skill or {})
+        w.swap_skill_infos_data = swap_effective
+        w.log.connect(self._append_log)
+        w.finished_ok.connect(self._on_worker_finished)
+        return w
 
 def run() -> None:
     from PyQt6.QtCore import QCoreApplication, Qt as QtCore
